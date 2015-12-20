@@ -12,6 +12,7 @@ object FeatureGeneration extends App {
   val sc = new SparkContext(conf)
   val sqlContext = new SQLContext(sc)
 
+
   case class Squawk(id: Int, text: String)
 
   // Input data: Each row is a 140 character or less squawk
@@ -25,6 +26,8 @@ object FeatureGeneration extends App {
 
   val tokenized = tokenizer.transform(squawksDF)
   tokenized.select("words", "squawkId").foreach(println)
+
+
 
   trait Feature {
     val name: String
@@ -48,6 +51,8 @@ object FeatureGeneration extends App {
 
   tfs.select("termFrequencies").foreach(println)
 
+
+
   val pipeline = new Pipeline()
     .setStages(Array(tokenizer, hashingTF))
 
@@ -55,12 +60,14 @@ object FeatureGeneration extends App {
 
   println(pipelineHashed.getClass)
 
+
+
   case class IntFeature(name: String, value: Int) extends Feature
 
-  case class BinaryFeature(name: String, value: Boolean) extends Feature
+  case class BooleanFeature(name: String, value: Boolean) extends Feature
 
-  def binarize(feature: IntFeature, threshold: Double): BinaryFeature = {
-    BinaryFeature(feature.name, feature.value > threshold)
+  def binarize(feature: IntFeature, threshold: Double): BooleanFeature = {
+    BooleanFeature(feature.name, feature.value > threshold)
   }
 
   val SUPER_THRESHOLD = 1000000
@@ -71,4 +78,18 @@ object FeatureGeneration extends App {
   val squirrelIsSuper = binarize(squirrelFollowers, SUPER_THRESHOLD)
   val slothIsSuper = binarize(slothFollowers, SUPER_THRESHOLD)
 
+
+  
+  trait Label extends Feature
+  
+  case class BooleanLabel(name: String, value: Boolean) extends Label
+
+  def toBooleanLabel(feature: BooleanFeature) = {
+    BooleanLabel(feature.name, feature.value)
+  }
+
+  val squirrelLabel = toBooleanLabel(squirrelIsSuper)
+  val slothLabel = toBooleanLabel(slothIsSuper)
+
+  Seq(squirrelLabel, slothLabel).foreach(println)
 }
