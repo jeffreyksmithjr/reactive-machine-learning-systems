@@ -1,5 +1,6 @@
 package com.reactivemachinelearning
 
+import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature.{HashingTF, Tokenizer}
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkConf, SparkContext}
@@ -46,6 +47,13 @@ object FeatureGeneration extends App {
   val tfs = hashingTF.transform(tokenized)
 
   tfs.select("termFrequencies").foreach(println)
+
+  val pipeline = new Pipeline()
+    .setStages(Array(tokenizer, hashingTF))
+
+  val pipelineHashed = pipeline.fit(squawksDF)
+
+  println(pipelineHashed.getClass)
 
   case class IntFeature(name: String, value: Int) extends Feature
 
