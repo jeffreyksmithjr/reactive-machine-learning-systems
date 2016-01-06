@@ -28,7 +28,6 @@ object FeatureGeneration extends App {
   tokenized.select("words", "squawkId").foreach(println)
 
 
-
   trait Feature {
     val name: String
     val value: Any
@@ -52,14 +51,12 @@ object FeatureGeneration extends App {
   tfs.select("termFrequencies").foreach(println)
 
 
-
   val pipeline = new Pipeline()
     .setStages(Array(tokenizer, hashingTF))
 
   val pipelineHashed = pipeline.fit(squawksDF)
 
   println(pipelineHashed.getClass)
-
 
 
   case class IntFeature(name: String, value: Int) extends Feature
@@ -79,9 +76,8 @@ object FeatureGeneration extends App {
   val slothIsSuper = binarize(slothFollowers, SUPER_THRESHOLD)
 
 
-  
   trait Label extends Feature
-  
+
   case class BooleanLabel(name: String, value: Boolean) extends Label
 
   def toBooleanLabel(feature: BooleanFeature) = {
@@ -92,4 +88,73 @@ object FeatureGeneration extends App {
   val slothLabel = toBooleanLabel(slothIsSuper)
 
   Seq(squirrelLabel, slothLabel).foreach(println)
+
+
+  trait Generator {
+
+    def generate(squawk: Squawk): Feature
+
+  }
+
+  object SquawkLengthCategory extends Generator {
+
+    val ModerateSquawkThreshold = 47
+    val LongSquawkThreshold = 94
+
+    private def extract(squawk: Squawk): IntFeature = {
+      IntFeature("squawkLength", squawk.text.length)
+    }
+
+    private def transform(lengthFeature: IntFeature): IntFeature = {
+      val squawkLengthCategory = lengthFeature match {
+        case IntFeature(_, length) if length < ModerateSquawkThreshold => 1
+        case IntFeature(_, length) if length < LongSquawkThreshold => 2
+        case _ => 3
+      }
+
+      IntFeature("squawkLengthCategory", squawkLengthCategory)
+    }
+
+    def generate(squawk: Squawk): IntFeature = {
+      transform(extract(squawk))
+    }
+  }
+
+
+  object CategoricalTransforms {
+
+    def categorize(thresholds: List[Int]): (Int) => Int = {
+      val categories = 1 to thresholds.length
+
+      (dataPoint: Int) => {
+        (thresholds, categories).zipped
+          .filter((ti, ci) => dataPoint < ti)
+          ._2
+          .head
+      }
+
+    }
+  }
+
+  object SquawkLengthCategoryRefactored extends Generator {
+
+    import CategoricalTransforms.categorize
+
+    val Thresholds = List(47, 94, 141)
+
+    private def extract(squawk: Squawk): IntFeature = {
+      IntFeature("squawkLength", squawk.text.length)
+    }
+
+    private def transform(lengthFeature: IntFeature): IntFeature = {
+      val squawkLengthCategory = categorize(Thresholds)(lengthFeature.value)
+      IntFeature("squawkLengthCategory", squawkLengthCategory)
+    }
+
+    def generate(squawk: Squawk): IntFeature = {
+      transform(extract(squawk))
+    }
+  }
+
 }
+
