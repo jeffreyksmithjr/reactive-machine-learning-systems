@@ -124,15 +124,14 @@ object FeatureGeneration extends App {
   object CategoricalTransforms {
 
     def categorize(thresholds: List[Int]): (Int) => Int = {
-      val categories = 1 to thresholds.length
-
       (dataPoint: Int) => {
-        (thresholds, categories).zipped
-          .filter((ti, ci) => dataPoint < ti)
+        thresholds.sorted
+          .zipWithIndex
+          .find {
+          case (threshold, i) => dataPoint < threshold
+        }.getOrElse((None, -1))
           ._2
-          .head
       }
-
     }
   }
 
