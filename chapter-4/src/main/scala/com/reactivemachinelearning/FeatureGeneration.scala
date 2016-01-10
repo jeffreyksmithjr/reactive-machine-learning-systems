@@ -1,7 +1,8 @@
 package com.reactivemachinelearning
 
 import org.apache.spark.ml.Pipeline
-import org.apache.spark.ml.feature.{HashingTF, Tokenizer}
+import org.apache.spark.ml.feature.{ChiSqSelector, HashingTF, Tokenizer}
+import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -90,6 +91,27 @@ object FeatureGeneration extends App {
   Seq(squirrelLabel, slothLabel).foreach(println)
 
 
+  // WIP feature selection stuff
+
+  val instances = Seq(
+    (7, Vectors.dense(0.0, 0.0, 18.0, 1.0), 1.0),
+    (8, Vectors.dense(0.0, 1.0, 12.0, 0.0), 0.0),
+    (9, Vectors.dense(1.0, 0.0, 15.0, 0.1), 0.0)
+  )
+
+  val df = sqlContext.createDataFrame(instances).toDF("id", "features", "clicked")
+
+  val selector = new ChiSqSelector()
+    .setNumTopFeatures(1)
+    .setFeaturesCol("features")
+    .setLabelCol("clicked")
+    .setOutputCol("selectedFeatures")
+
+  val result = selector.fit(df).transform(df)
+  result.show()
+
+  // WIP feature selection stuff
+
   trait Generator {
 
     def generate(squawk: Squawk): Feature
@@ -137,7 +159,7 @@ object FeatureGeneration extends App {
 
   object SquawkLengthCategoryRefactored extends Generator {
 
-    import CategoricalTransforms.categorize
+    import com.reactivemachinelearning.FeatureGeneration.CategoricalTransforms.categorize
 
     val Thresholds = List(47, 94, 141)
 
