@@ -6,6 +6,8 @@ import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkConf, SparkContext}
 
+import scala.util.Random
+
 object FeatureGeneration extends App {
 
   // setup
@@ -176,6 +178,45 @@ object FeatureGeneration extends App {
       transform(extract(squawk))
     }
   }
+
+  trait StubGenerator extends Generator {
+    def generate(squawk: Squawk) = {
+      IntFeature("dummyFeature", Random.nextInt())
+    }
+  }
+
+  object SquawkLanguage extends StubGenerator {}
+
+  object HasImage extends StubGenerator {}
+
+  object UserData extends StubGenerator {}
+
+  val featureGenerators = Set(SquawkLanguage, HasImage, UserData)
+
+
+  object GlobalUserData extends StubGenerator {}
+
+  object RainforestUserData extends StubGenerator {}
+
+  val globalFeatureGenerators = Set(SquawkLanguage, HasImage, GlobalUserData)
+
+  val rainforestFeatureGenerators = Set(SquawkLanguage, HasImage, RainforestUserData)
+
+
+  trait RainforestData {
+    self =>
+    require(rainforestContext(),
+      s"${self.getClass} uses rainforest data outside of a rainforest context.")
+
+    private def rainforestContext() = {
+      val environment = Option(System.getenv("RAINFOREST"))
+      environment.isDefined && environment.get.toBoolean
+    }
+  }
+
+  object SafeRainforestUserData extends StubGenerator with RainforestData {}
+
+  val safeRainforestFeatureGenerators = Set(SquawkLanguage, HasImage, SafeRainforestUserData)
 
 }
 
