@@ -4,6 +4,7 @@ import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature.{ChiSqSelector, HashingTF, Tokenizer}
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.sql.SQLContext
+
 import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.util.Random
@@ -92,27 +93,28 @@ object FeatureGeneration extends App {
 
   Seq(squirrelLabel, slothLabel).foreach(println)
 
-
-  // WIP feature selection stuff
-
   val instances = Seq(
-    (7, Vectors.dense(0.0, 0.0, 18.0, 1.0), 1.0),
-    (8, Vectors.dense(0.0, 1.0, 12.0, 0.0), 0.0),
-    (9, Vectors.dense(1.0, 0.0, 15.0, 0.1), 0.0)
+    (123, Vectors.dense(0.2, 0.3, 16.2, 1.1), 0.0),
+    (456, Vectors.dense(0.1, 1.3, 11.3, 1.2), 1.0),
+    (789, Vectors.dense(1.2, 0.8, 14.5, 0.5), 0.0)
   )
 
-  val df = sqlContext.createDataFrame(instances).toDF("id", "features", "clicked")
+  val featuresName = "features"
+  val labelName = "isSuper"
+
+  val instancesDF = sqlContext.createDataFrame(instances)
+    .toDF("id", featuresName, labelName)
 
   val selector = new ChiSqSelector()
-    .setNumTopFeatures(1)
-    .setFeaturesCol("features")
-    .setLabelCol("clicked")
+    .setNumTopFeatures(2)
+    .setFeaturesCol(featuresName)
+    .setLabelCol(labelName)
     .setOutputCol("selectedFeatures")
 
-  val result = selector.fit(df).transform(df)
-  result.show()
+  val selectedFeatures = selector.fit(instancesDF)
+    .transform(instancesDF)
 
-  // WIP feature selection stuff
+  selectedFeatures.show()
 
   trait Generator {
 
@@ -152,8 +154,8 @@ object FeatureGeneration extends App {
         thresholds.sorted
           .zipWithIndex
           .find {
-          case (threshold, i) => dataPoint < threshold
-        }.getOrElse((None, -1))
+            case (threshold, i) => dataPoint < threshold
+          }.getOrElse((None, -1))
           ._2
       }
     }
