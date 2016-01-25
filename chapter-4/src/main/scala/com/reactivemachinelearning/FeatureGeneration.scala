@@ -68,16 +68,19 @@ object FeatureGeneration extends App {
   case class BooleanFeature(name: String, value: Boolean) extends Feature
 
   def binarize(feature: IntFeature, threshold: Double): BooleanFeature = {
-    BooleanFeature(feature.name, feature.value > threshold)
+    BooleanFeature("binarized-" + feature.name, feature.value > threshold)
   }
 
   val SUPER_THRESHOLD = 1000000
 
-  val squirrelFollowers = IntFeature("followers", 12)
-  val slothFollowers = IntFeature("followers", 23584166)
+  val squirrelFollowers = 12
+  val slothFollowers = 23584166
 
-  val squirrelIsSuper = binarize(squirrelFollowers, SUPER_THRESHOLD)
-  val slothIsSuper = binarize(slothFollowers, SUPER_THRESHOLD)
+  val squirrelFollowersFeature = IntFeature("followers", squirrelFollowers)
+  val slothFollowersFeature = IntFeature("followers", slothFollowers)
+
+  val squirrelIsSuper = binarize(squirrelFollowersFeature, SUPER_THRESHOLD)
+  val slothIsSuper = binarize(slothFollowersFeature, SUPER_THRESHOLD)
 
 
   trait Label extends Feature
