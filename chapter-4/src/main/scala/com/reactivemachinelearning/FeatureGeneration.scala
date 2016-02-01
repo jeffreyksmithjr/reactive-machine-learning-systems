@@ -32,12 +32,18 @@ object FeatureGeneration extends App {
   tokenized.select("words", "squawkId").foreach(println)
 
 
-  trait Feature {
+  trait FeatureType {
     val name: String
-    val value: Any
+    type V
   }
 
-  case class WordSequenceFeature(name: String, value: Seq[String]) extends Feature
+  trait Feature extends FeatureType {
+    val value: V
+  }
+
+  case class WordSequenceFeature(name: String, value: Seq[String]) extends Feature {
+    type V = Seq[String]
+  }
 
   val wordsFeatures = tokenized.select("words")
     .map[WordSequenceFeature](row =>
@@ -63,9 +69,13 @@ object FeatureGeneration extends App {
   println(pipelineHashed.getClass)
 
 
-  case class IntFeature(name: String, value: Int) extends Feature
+  case class IntFeature(name: String, value: Int) extends Feature {
+    type V = Int
+  }
 
-  case class BooleanFeature(name: String, value: Boolean) extends Feature
+  case class BooleanFeature(name: String, value: Boolean) extends Feature {
+    type V = Boolean
+  }
 
   def binarize(feature: IntFeature, threshold: Double): BooleanFeature = {
     BooleanFeature("binarized-" + feature.name, feature.value > threshold)
@@ -85,7 +95,9 @@ object FeatureGeneration extends App {
 
   trait Label extends Feature
 
-  case class BooleanLabel(name: String, value: Boolean) extends Label
+  case class BooleanLabel(name: String, value: Boolean) extends Label {
+    type V = Boolean
+  }
 
   def toBooleanLabel(feature: BooleanFeature) = {
     BooleanLabel(feature.name, feature.value)
