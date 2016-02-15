@@ -1,8 +1,12 @@
 package com.reactivemachinelearning
 
+import com.reactivemachinelearning.FeatureGeneration.{BooleanFeature, IntFeature, Named}
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature.{ChiSqSelector, HashingTF, Tokenizer}
 import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.stat.Statistics
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SQLContext
 
 import org.apache.spark.{SparkConf, SparkContext}
@@ -32,18 +36,16 @@ object FeatureGeneration extends App {
   tokenized.select("words", "squawkId").foreach(println)
 
 
-  trait FeatureType {
+  trait FeatureType[+V] {
     val name: String
-    type V
   }
 
-  trait Feature extends FeatureType {
+  trait Feature[+V] extends FeatureType[V] {
     val value: V
   }
 
-  case class WordSequenceFeature(name: String, value: Seq[String]) extends Feature {
-    type V = Seq[String]
-  }
+  case class WordSequenceFeature(name: String, value: Seq[String]) extends Feature[Seq[String]]
+
 
   val wordsFeatures = tokenized.select("words")
     .map[WordSequenceFeature](row =>
@@ -69,13 +71,25 @@ object FeatureGeneration extends App {
   println(pipelineHashed.getClass)
 
 
-  case class IntFeature(name: String, value: Int) extends Feature {
-    type V = Int
+  case class IntFeature(name: String, value: Int)
+    extends Feature[Int]
+
+  case class BooleanFeature(name: String, value: Boolean)
+    extends Feature[Boolean]
+
+  trait Named {
+    def name(inputFeature: Feature[Any]) : String = {
+      inputFeature.name + "-" + Thread.currentThread.getStackTrace()(3).getMethodName
+    }
   }
 
-  case class BooleanFeature(name: String, value: Boolean) extends Feature {
-    type V = Boolean
+  object Binarizer extends Named {
+    def binarize(feature: IntFeature, threshold: Double): BooleanFeature = {
+      BooleanFeature(name(feature), feature.value > threshold)
+    }
   }
+
+
 
   def binarize(feature: IntFeature, threshold: Double): BooleanFeature = {
     BooleanFeature("binarized-" + feature.name, feature.value > threshold)
@@ -93,11 +107,11 @@ object FeatureGeneration extends App {
   val slothIsSuper = binarize(slothFollowersFeature, SUPER_THRESHOLD)
 
 
-  trait Label extends Feature
+  println("Binarize it:" + Binarizer.binarize(squirrelFollowersFeature, SUPER_THRESHOLD))
 
-  case class BooleanLabel(name: String, value: Boolean) extends Label {
-    type V = Boolean
-  }
+  trait Label[V] extends Feature[V]
+
+  case class BooleanLabel(name: String, value: Boolean) extends Label[Boolean]
 
   def toBooleanLabel(feature: BooleanFeature) = {
     BooleanLabel(feature.name, feature.value)
@@ -120,8 +134,10 @@ object FeatureGeneration extends App {
   val instancesDF = sqlContext.createDataFrame(instances)
     .toDF("id", featuresName, labelName)
 
+  val K = 2
+
   val selector = new ChiSqSelector()
-    .setNumTopFeatures(2)
+    .setNumTopFeatures(K)
     .setFeaturesCol(featuresName)
     .setLabelCol(labelName)
     .setOutputCol("selectedFeatures")
@@ -129,15 +145,30 @@ object FeatureGeneration extends App {
   val selectedFeatures = selector.fit(instancesDF)
     .transform(instancesDF)
 
-  selectedFeatures.show()
+  val labeledPoints = sc.parallelize(instances.map({
+    case (id, features, label) =>
+      LabeledPoint(label = label, features = features)
+  }))
 
-  trait Generator {
+  println("chi-squared results")
+  val sorted = Statistics.chiSqTest(labeledPoints).map(result =>
+    result.pValue).sorted
+  sorted.foreach(println)
 
-    def generate(squawk: Squawk): Feature
+  def validateSelection(labeledPoints: RDD[LabeledPoint], topK: Int, cutoff: Double) = {
+    val pValues = Statistics.chiSqTest(labeledPoints)
+      .map(result => result.pValue)
+      .sorted
+    pValues(topK) < cutoff
+  }
+
+  trait Generator[V] {
+
+    def generate(squawk: Squawk): Feature[V]
 
   }
 
-  object SquawkLengthCategory extends Generator {
+  object SquawkLengthCategory extends Generator[Int] {
 
     val ModerateSquawkThreshold = 47
     val LongSquawkThreshold = 94
@@ -164,19 +195,20 @@ object FeatureGeneration extends App {
 
   object CategoricalTransforms {
 
-    def categorize(thresholds: List[Int]): (Int) => Int = {
-      (dataPoint: Int) => {
-        thresholds.sorted
-          .zipWithIndex
-          .find {
-            case (threshold, i) => dataPoint < threshold
+    def categorize(thresholds: List[Int]): (IntFeature) => IntFeature = {
+      (rawFeature: IntFeature) => {
+        IntFeature("categorized-" + rawFeature.name,
+          thresholds.sorted
+            .zipWithIndex
+            .find {
+            case (threshold, i) => rawFeature.value < threshold
           }.getOrElse((None, -1))
-          ._2
+            ._2)
       }
     }
   }
 
-  object SquawkLengthCategoryRefactored extends Generator {
+  object SquawkLengthCategoryRefactored extends Generator[Int] {
 
     import com.reactivemachinelearning.FeatureGeneration.CategoricalTransforms.categorize
 
@@ -187,8 +219,8 @@ object FeatureGeneration extends App {
     }
 
     private def transform(lengthFeature: IntFeature): IntFeature = {
-      val squawkLengthCategory = categorize(Thresholds)(lengthFeature.value)
-      IntFeature("squawkLengthCategory", squawkLengthCategory)
+      val squawkLengthCategory = categorize(Thresholds)(lengthFeature)
+      IntFeature("squawkLengthCategory", squawkLengthCategory.value)
     }
 
     def generate(squawk: Squawk): IntFeature = {
@@ -196,7 +228,7 @@ object FeatureGeneration extends App {
     }
   }
 
-  trait StubGenerator extends Generator {
+  trait StubGenerator extends Generator[Int] {
     def generate(squawk: Squawk) = {
       IntFeature("dummyFeature", Random.nextInt())
     }
