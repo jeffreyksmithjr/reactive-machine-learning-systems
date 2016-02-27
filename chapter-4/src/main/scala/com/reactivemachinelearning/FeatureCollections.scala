@@ -18,61 +18,61 @@ object FeatureCollections extends App {
   import sqlContext.implicits._
 
 
-  trait FeatureType[+V] extends Serializable {
+  trait FeatureType[V] extends Serializable {
     val name = this.getClass.getSimpleName
   }
 
-  trait LabelType[+V] extends FeatureType[V]
+  trait LabelType[V] extends FeatureType[V]
 
   object SquawkLength extends FeatureType[Int]
 
   object Super extends LabelType[Boolean]
 
-  val originalFeatures = Set(SquawkLength)
+  val originalFeatures: Set[FeatureType] = Set(SquawkLength)
   val label = Super
 
   object PastSquawks extends FeatureType[Int]
 
-  val basicFeatures = Set(SquawkLength, PastSquawks)
+  val basicFeatures = originalFeatures + PastSquawks
 
   object MobileSquawker extends FeatureType[Boolean]
 
-  val moreFeatures = Set(SquawkLength, PastSquawks, MobileSquawker)
+  val moreFeatures = basicFeatures + MobileSquawker
 
   case class FeatureCollection(id: Int,
                                createdAt: DateTime,
-                               features: Set[_ <: FeatureType[Any]],
-                               label: LabelType[Any])
+                               features: Set[_ <: FeatureType[_]],
+                               label: LabelType[_])
 
 
   val earlier = (DateTime.now - 1 month).getDateTime
   val now = DateTime.now()
 
   val earlierCollection = FeatureCollection(101,
-    earlier,
-    basicFeatures,
-    label)
+                                            earlier,
+                                            basicFeatures,
+                                            label)
 
   val latestCollection = FeatureCollection(202,
-    now,
-    moreFeatures,
-    label)
+                                           now,
+                                           moreFeatures,
+                                           label)
 
   val featureCollections = sc.parallelize(
-    Seq(earlierCollection,
-      latestCollection))
+    Seq(earlierCollection, latestCollection))
 
   val beginningOfTime = (DateTime.now() - 1 year).getDateTime
 
   val FallbackCollection = FeatureCollection(404,
-    beginningOfTime,
-    originalFeatures,
-    label)
+                                             beginningOfTime,
+                                             originalFeatures,
+                                             label)
 
   def validCollection(collections: RDD[FeatureCollection],
-                      invalidFeatures: Set[FeatureType[Any]]) = {
+                      invalidFeatures: Set[FeatureType[_]]) = {
     val validCollections = collections.filter(
-      fc => !fc.features.exists(invalidFeatures.contains))
+      fc => !fc.features
+        .exists(invalidFeatures.contains))
       .sortBy(collection => collection.id)
     if (validCollections.count() > 0) {
       validCollections.first()
@@ -84,8 +84,9 @@ object FeatureCollections extends App {
 
   case class ValidatedFeatureCollection(id: Int,
                                         createdAt: DateTime,
-                                        features: Set[_ <: FeatureType[Any]],
-                                        label: LabelType[Any],
-                                        passedValidation: Boolean)
+                                        features: Set[_ <: FeatureType[_]],
+                                        label: LabelType[_],
+                                        passedValidation: Boolean,
+                                        cutoff: Double)
 
 }

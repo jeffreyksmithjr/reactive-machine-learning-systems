@@ -36,11 +36,11 @@ object FeatureGeneration extends App {
   tokenized.select("words", "squawkId").foreach(println)
 
 
-  trait FeatureType[+V] {
+  trait FeatureType[V] {
     val name: String
   }
 
-  trait Feature[+V] extends FeatureType[V] {
+  trait Feature[V] extends FeatureType[V] {
     val value: V
   }
 
@@ -78,7 +78,7 @@ object FeatureGeneration extends App {
     extends Feature[Boolean]
 
   trait Named {
-    def name(inputFeature: Feature[Any]) : String = {
+    def name(inputFeature: Feature[_]): String = {
       inputFeature.name + "-" + Thread.currentThread.getStackTrace()(3).getMethodName
     }
   }
@@ -88,7 +88,6 @@ object FeatureGeneration extends App {
       BooleanFeature(name(feature), feature.value > threshold)
     }
   }
-
 
 
   def binarize(feature: IntFeature, threshold: Double): BooleanFeature = {
@@ -151,8 +150,9 @@ object FeatureGeneration extends App {
   }))
 
   println("chi-squared results")
-  val sorted = Statistics.chiSqTest(labeledPoints).map(result =>
-    result.pValue).sorted
+  val sorted = Statistics.chiSqTest(labeledPoints)
+    .map(result => result.pValue)
+    .sorted
   sorted.foreach(println)
 
   def validateSelection(labeledPoints: RDD[LabeledPoint], topK: Int, cutoff: Double) = {
