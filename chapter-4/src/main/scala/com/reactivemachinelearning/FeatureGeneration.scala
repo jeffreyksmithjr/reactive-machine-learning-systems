@@ -1,6 +1,5 @@
 package com.reactivemachinelearning
 
-import com.reactivemachinelearning.FeatureGeneration.{BooleanFeature, IntFeature, Named}
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature.{ChiSqSelector, HashingTF, Tokenizer}
 import org.apache.spark.mllib.linalg.Vectors
@@ -8,7 +7,6 @@ import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.stat.Statistics
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SQLContext
-
 import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.util.Random

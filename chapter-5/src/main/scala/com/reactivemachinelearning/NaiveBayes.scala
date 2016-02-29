@@ -18,10 +18,10 @@ case class BooleanInstance(features: Set[BooleanFeature], label: BooleanLabel)
 
 class NaiveBayesModel(instances: List[BooleanInstance]) {
 
-  val featureTypes = instances.map(i => i.features.map(f => f.name)).flatMap(identity).toSet
-
   val trueInstances = instances.filter(i => i.label.value)
   val probabilityTrue = trueInstances.size.toDouble / instances.size
+
+  val featureTypes = instances.flatMap(i => i.features.map(f => f.name)).toSet
 
   val featureProbabilities = featureTypes.toList.map {
     featureType =>
@@ -45,15 +45,4 @@ class NaiveBayesModel(instances: List[BooleanInstance]) {
     numerator / probabilityFeatureVector(features)
   }
 
-}
-
-object Runner extends App {
-
-  val training = List(BooleanInstance(Set(BooleanFeature("a", true)), BooleanLabel("x", true)))
-
-  val test = Set(BooleanFeature("a", true))
-
-  val model = new NaiveBayesModel(training)
-
-  println(model.predict(test))
 }

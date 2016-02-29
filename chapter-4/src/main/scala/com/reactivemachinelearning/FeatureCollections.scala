@@ -28,7 +28,7 @@ object FeatureCollections extends App {
 
   object Super extends LabelType[Boolean]
 
-  val originalFeatures: Set[FeatureType] = Set(SquawkLength)
+  val originalFeatures: Set[FeatureType[_]] = Set(SquawkLength)
   val label = Super
 
   object PastSquawks extends FeatureType[Int]
