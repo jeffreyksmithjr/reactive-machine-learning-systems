@@ -1,7 +1,7 @@
 package com.reactivemachinelearning
 
 import org.apache.spark.ml.Pipeline
-import org.apache.spark.ml.classification.{DecisionTreeClassificationModel, DecisionTreeClassifier}
+import org.apache.spark.ml.classification.{RandomForestClassificationModel, RandomForestClassifier, DecisionTreeClassificationModel, DecisionTreeClassifier}
 import org.apache.spark.ml.feature.{IndexToString, StringIndexer, VectorIndexer}
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkConf, SparkContext}
@@ -48,5 +48,19 @@ object SparkPipeline extends App {
     .asInstanceOf[DecisionTreeClassificationModel]
 
   println(decisionTreeModel.toDebugString)
+
+  val randomForest = new RandomForestClassifier()
+    .setLabelCol("indexedLabel")
+    .setFeaturesCol("indexedFeatures")
+
+  val revisedPipeline = new Pipeline()
+    .setStages(Array(labelIndexer, featureIndexer, randomForest, labelConverter))
+
+  val revisedModel = revisedPipeline.fit(trainingData)
+
+  val randomForestModel = revisedModel.stages(2)
+    .asInstanceOf[RandomForestClassificationModel]
+
+  println(randomForestModel.toDebugString)
 
 }
