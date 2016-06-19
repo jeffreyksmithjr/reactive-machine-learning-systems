@@ -20,3 +20,5 @@ project/plugins/project/
 # IDEA specific
 */.idea/*
 
+# Model files
+*/my-model/*
