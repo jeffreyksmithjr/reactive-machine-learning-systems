@@ -16,14 +16,12 @@ case class Prediction(id: Long, timestamp: Long, value: Double)
 
 
 trait Protocols extends DefaultJsonProtocol {
-  implicit val predictionFormat = jsonFormat2(Prediction)
+  implicit val predictionFormat = jsonFormat3(Prediction.apply)
 }
 
 trait Service extends Protocols {
   implicit val system: ActorSystem
-
   implicit def executor: ExecutionContextExecutor
-
   implicit val materializer: Materializer
 
   val logger: LoggingAdapter
@@ -46,15 +44,13 @@ trait Service extends Protocols {
   }
 
   val routes = {
-    logRequestResult("spark-model-service") {
+    logRequestResult("model-service") {
       pathPrefix("predict") {
-        (get & path(Segment)) { features =>
-          complete {
-            ToResponseMarshallable(predict(features)) {
-              case Right(prediction) => prediction
-              case Left(errorMessage) => BadRequest -> errorMessage
+        (get & path(Segment)) {
+          features: String =>
+            complete {
+              ToResponseMarshallable(predict(features))
             }
-          }
         }
       }
     }
