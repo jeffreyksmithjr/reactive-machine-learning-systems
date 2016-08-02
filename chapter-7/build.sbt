@@ -1,3 +1,6 @@
+import sbtdocker.DockerPlugin
+import sbtdocker.immutable.Dockerfile
+
 name := "chapter-7"
 
 version := "1.0"
@@ -16,3 +19,21 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-http-experimental" % akkaV,
   "com.typesafe.akka" %% "akka-http-spray-json-experimental" % akkaV,
   "com.typesafe.akka" %% "akka-http-testkit" % akkaV)
+
+enablePlugins(DockerPlugin)
+
+dockerfile in docker := {
+  val jarFile: File = sbt.Keys.`package`.in(Compile, packageBin).value
+  val classpath = (managedClasspath in Compile).value
+  val mainClass = "com.reactivemachinelearning.PredictiveService"
+  val jarTarget = s"/app/${jarFile.getName}"
+  val classpathString = classpath.files.map("/app/" + _.getName)
+    .mkString(":") + ":" + jarTarget
+
+  new Dockerfile {
+    from("java")
+    add(classpath.files, "/app/")
+    add(jarFile, jarTarget)
+    entryPoint("java", "-cp", classpathString, mainClass)
+  }
+}
