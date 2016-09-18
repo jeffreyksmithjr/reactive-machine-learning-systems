@@ -11,21 +11,24 @@ object Supervisor extends ServerApp {
 
   def splitTraffic(data: String) = {
     data.hashCode % 10 match {
-      case x if x < 4 => true
-      case _ => false
+      case x if x < 4 => Client.callA(data)
+      case _ => Client.callB(data)
     }
   }
 
-  val service = HttpService {
+  val apiService = HttpService {
     case GET -> Root / "predict" / inputData =>
-      val response = splitTraffic(inputData)
-      Ok(s"Predicted $response.")
+      val response = splitTraffic(inputData).run
+      Ok(response)
   }
 
   override def server(args: List[String]): Task[Server] = {
     BlazeBuilder
-      .bindHttp(8080, "localhost")
-      .mountService(service, "/api")
+      .bindLocal(8080)
+      .mountService(apiService, "/api")
+      .mountService(Models.modelA, "/models")
+      .mountService(Models.modelB, "/models")
       .start
   }
+
 }
