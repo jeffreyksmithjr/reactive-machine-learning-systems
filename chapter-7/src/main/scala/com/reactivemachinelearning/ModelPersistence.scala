@@ -52,7 +52,7 @@ object ModelPersistence extends App {
 
   val classifier = new LogisticRegression()
     .setMaxIter(5)
-  
+
   val pipeline = new Pipeline()
     .setStages(Array(discretizer, assembler, classifier))
 

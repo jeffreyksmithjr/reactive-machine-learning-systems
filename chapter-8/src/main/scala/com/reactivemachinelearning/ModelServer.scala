@@ -1,5 +1,6 @@
 package com.reactivemachinelearning
 
+import org.http4s.argonaut._
 import org.http4s.server.{Server, ServerApp}
 import org.http4s.server.blaze._
 import org.http4s._
@@ -7,7 +8,9 @@ import org.http4s.dsl._
 
 import scalaz.concurrent.Task
 
-object Supervisor extends ServerApp {
+object ModelServer extends ServerApp {
+
+//  implicit def responseEncoder: EntityEncoder[Response] = jsonEncoderOf[Response]
 
   def splitTraffic(data: String) = {
     data.hashCode % 10 match {
@@ -19,7 +22,7 @@ object Supervisor extends ServerApp {
   val apiService = HttpService {
     case GET -> Root / "predict" / inputData =>
       val response = splitTraffic(inputData).run
-      Ok(response)
+      Ok(response.toString())
   }
 
   override def server(args: List[String]): Task[Server] = {
