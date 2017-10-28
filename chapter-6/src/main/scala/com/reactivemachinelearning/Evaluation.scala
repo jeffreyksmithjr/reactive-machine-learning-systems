@@ -1,22 +1,18 @@
 package com.reactivemachinelearning
 
 import com.github.nscala_time.time.Imports._
-import org.apache.spark.ml.classification.{ProbabilisticClassificationModel, LogisticRegressionModel, BinaryLogisticRegressionSummary, LogisticRegression}
+import org.apache.spark.ml.classification.{BinaryLogisticRegressionSummary, LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
-import org.apache.spark.sql.SQLContext
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.max
 
 object Evaluation extends App {
 
 
-  val conf = new SparkConf().setAppName("FraudModel").setMaster("local[*]")
-  val sc = new SparkContext(conf)
-  val sqlContext = new SQLContext(sc)
+  val session = SparkSession.builder.appName("Fraud Model").getOrCreate()
+  import session.implicits._
 
-  import sqlContext.implicits._
-
-  val data = sqlContext.read.format("libsvm").load("src/main/resources/sample_libsvm_data.txt")
+  val data = session.read.format("libsvm").load("src/main/resources/sample_libsvm_data.txt")
 
   val Array(trainingData, testingData) = data.randomSplit(Array(0.8, 0.2))
 
@@ -76,7 +72,7 @@ object Evaluation extends App {
 
   println("Area under Precision-Recall Curve " + areaUnderPR)
 
-  case class Results(model: ProbabilisticClassificationModel,
+  case class Results(model: LogisticRegressionModel,
                      evaluatedTime: DateTime,
                      areaUnderTrainingROC: Double,
                      areaUnderTestingPR: Double)
