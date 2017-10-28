@@ -6,18 +6,15 @@ import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.stat.Statistics
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SQLContext
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.sql.SparkSession
 
 import scala.util.Random
 
 object FeatureGeneration extends App {
 
   // setup
-  val conf = new SparkConf().setAppName("Feature Generation").setMaster("local[*]")
-  val sc = new SparkContext(conf)
-  val sqlContext = new SQLContext(sc)
-
+  val session = SparkSession.builder.appName("Feature Generation").getOrCreate()
+  import session.implicits._
 
   case class Squawk(id: Int, text: String)
 
@@ -26,12 +23,12 @@ object FeatureGeneration extends App {
     Squawk(124, "Who really cares who gets the worm?  I'm fine with sleeping in."),
     Squawk(125, "Why don't french fries grow on trees?"))
 
-  val squawksDF = sqlContext.createDataFrame(squawks).toDF("squawkId", "squawk")
+  val squawksDF = session.createDataFrame(squawks).toDF("squawkId", "squawk")
 
   val tokenizer = new Tokenizer().setInputCol("squawk").setOutputCol("words")
 
   val tokenized = tokenizer.transform(squawksDF)
-  tokenized.select("words", "squawkId").foreach(println)
+  tokenized.select("words", "squawkId").show()
 
 
   trait FeatureType[V] {
@@ -46,11 +43,11 @@ object FeatureGeneration extends App {
 
 
   val wordsFeatures = tokenized.select("words")
-    .map[WordSequenceFeature](row =>
+    .map(row =>
     WordSequenceFeature("words",
       row.getSeq[String](0)))
 
-  wordsFeatures.foreach(println)
+  wordsFeatures.show()
 
   val hashingTF = new HashingTF()
     .setInputCol("words")
@@ -58,7 +55,7 @@ object FeatureGeneration extends App {
 
   val tfs = hashingTF.transform(tokenized)
 
-  tfs.select("termFrequencies").foreach(println)
+  tfs.select("termFrequencies").show()
 
 
   val pipeline = new Pipeline()
@@ -128,7 +125,7 @@ object FeatureGeneration extends App {
   val featuresName = "features"
   val labelName = "isSuper"
 
-  val instancesDF = sqlContext.createDataFrame(instances)
+  val instancesDF = session.createDataFrame(instances)
     .toDF("id", featuresName, labelName)
 
   val K = 2
@@ -142,7 +139,7 @@ object FeatureGeneration extends App {
   val selectedFeatures = selector.fit(instancesDF)
     .transform(instancesDF)
 
-  val labeledPoints = sc.parallelize(instances.map({
+  val labeledPoints = session.sparkContext.parallelize(instances.map({
     case (id, features, label) =>
       LabeledPoint(label = label, features = features)
   }))
