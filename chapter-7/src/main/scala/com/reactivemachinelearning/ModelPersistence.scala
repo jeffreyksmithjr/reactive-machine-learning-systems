@@ -4,19 +4,14 @@ import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.feature.{QuantileDiscretizer, VectorAssembler}
-import org.apache.spark.ml.tuning.{CrossValidatorModel, CrossValidator, ParamGridBuilder}
-import org.apache.spark.sql.SQLContext
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.ml.tuning.{CrossValidator, CrossValidatorModel, ParamGridBuilder}
+import org.apache.spark.sql.SparkSession
 
 object ModelPersistence extends App {
 
-  val conf = new SparkConf()
-    .setAppName("ModelPersistence")
-    .setMaster("local[*]")
-  val sc = new SparkContext(conf)
-  val sqlContext = new SQLContext(sc)
+  val session = SparkSession.builder.appName("ModelPersistence").getOrCreate()
 
-  val data = Array(
+  val data = Seq(
     (0, 18.0, 0),
     (1, 20.0, 0),
     (2, 8.0, 1),
@@ -38,7 +33,7 @@ object ModelPersistence extends App {
     (18, 3.0, 1),
     (19, 20.0, 0))
 
-  val instances = sqlContext.createDataFrame(data)
+  val instances = session.createDataFrame(data)
     .toDF("id", "seeds", "label")
 
   val discretizer = new QuantileDiscretizer()
