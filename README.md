@@ -1,3 +1,3 @@
-# Reactive Machine Learning Systems
+# Machine Learning Systems
 
-Working code for the upcoming book from Manning, Reactive Machine Learning Systems.
+Code from the book [Machine Learning Systems](https://www.manning.com/books/machine-learning-systems).
